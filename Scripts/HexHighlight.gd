@@ -13,19 +13,29 @@ func _draw() -> void:
 	if current_hex == Vector2i(-1, -1) or tile_map_ref == null:
 		return
 		
-	# Pega o centro do hexágono baseado no TileMap
+	# 1. Pega o centro do hexágono no mundo
 	var center_pos = tile_map_ref.map_to_local(current_hex)
 	
-	# Usa nossa matemática para achar os cantos
-	var corners = HexMetrics.get_corners(Vector2.ZERO) # Pega cantos locais (relativo ao centro 0,0)
+	# 2. Define os pontos MANUAIS baseados no tamanho 56x64
+	# Topo/Baixo = 32px do centro (Total 64 altura)
+	# Lados = 28px do centro (Total 56 largura)
+	# "Ombro" (onde começa a reta vertical) = 16px do centro
 	
-	# Ajusta a posição para onde o nó está
-	# Como este nó (HighlightLayer) estará na posição 0,0 do mundo, 
-	# precisamos desenhar o poligono deslocado para 'center_pos'
-	var offset_corners = PackedVector2Array()
-	for p in corners:
-		offset_corners.append(p + center_pos)
+	var local_corners = PackedVector2Array([
+		Vector2(0, -32),   # Topo Centro
+		Vector2(28, -16),  # Topo Direito
+		Vector2(28, 16),   # Baixo Direito
+		Vector2(0, 32),    # Baixo Centro
+		Vector2(-28, 16),  # Baixo Esquerdo
+		Vector2(-28, -16), # Topo Esquerdo
+		Vector2(0, -32)    # Repete o Topo para fechar o loop automaticamente
+	])
+	
+	# 3. Aplica o deslocamento (posição no mundo)
+	var final_points = PackedVector2Array()
+	for p in local_corners:
+		final_points.append(p + center_pos)
 		
-	# Desenha
-	draw_polyline(offset_corners, Color.YELLOW, 4.0)
-	draw_line(offset_corners[-1], offset_corners[0], Color.YELLOW, 4.0)
+	# 4. Desenha
+	# Usando draw_polyline com o último ponto igual ao primeiro, ele fecha o ciclo
+	draw_polyline(final_points, Color.YELLOW, 2.0) # Diminuí a espessura para 2.0 pra ficar mais delicado

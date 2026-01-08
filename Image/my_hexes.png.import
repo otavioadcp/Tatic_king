@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d1el3ncy8viwc"
-path="res://.godot/imported/hex_ase.png-9018bde2052e1d5b52398c2cec2a9330.ctex"
+uid="uid://cfkmfuelwb6t3"
+path="res://.godot/imported/my_hexes.png-3a855ddb357be852f527b7248a1eb983.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Image/hex_ase.png"
-dest_files=["res://.godot/imported/hex_ase.png-9018bde2052e1d5b52398c2cec2a9330.ctex"]
+source_file="res://Image/my_hexes.png"
+dest_files=["res://.godot/imported/my_hexes.png-3a855ddb357be852f527b7248a1eb983.ctex"]
 
 [params]
 

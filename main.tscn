@@ -1,7 +1,17 @@
-[gd_scene load_steps=2 format=3 uid="uid://b1g2511ktygeq"]
+[gd_scene load_steps=3 format=3 uid="uid://b1g2511ktygeq"]
 
-[ext_resource type="PackedScene" uid="uid://c7uvfwncboweg" path="res://MapSystem.tscn" id="1_ig7tw"]
+[ext_resource type="PackedScene" uid="uid://c7uvfwncboweg" path="res://MapSystem.tscn" id="1_0xm2m"]
+[ext_resource type="PackedScene" uid="uid://digqirme2qspl" path="res://RTSCamera.tscn" id="2_h2yge"]
 
-[node name="Node2D" type="Node2D"]
+[node name="Root" type="Node2D"]
 
-[node name="MapSystem" parent="." instance=ExtResource("1_ig7tw")]
+[node name="MapSystem" parent="." node_paths=PackedStringArray("camera") instance=ExtResource("1_0xm2m")]
+texture_filter = 1
+camera = NodePath("../Camera2D")
+grid_width = 128
+grid_height = 128
+noise_seed = 111
+frequency = 0.05
+
+[node name="Camera2D" parent="." instance=ExtResource("2_h2yge")]
+position = Vector2(-6918.662, -10951.226)

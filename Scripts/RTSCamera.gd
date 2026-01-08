@@ -65,8 +65,8 @@ func handle_keyboard_movement(delta: float) -> void:
 
 func handle_edge_scroll(delta: float) -> void:
 	# Se a janela do jogo não estiver em foco, evitamos mover a câmera
-	if not get_viewport().has_focus(): return
-
+	if not get_window().has_focus(): return
+	
 	var mouse_pos = get_viewport().get_mouse_position()
 	var screen_size = get_viewport_rect().size
 	var velocity = Vector2.ZERO

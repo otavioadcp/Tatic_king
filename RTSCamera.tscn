@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://digqirme2qspl"]
+
+[ext_resource type="Script" uid="uid://bxvdy0rx7ag6m" path="res://Scripts/RTSCamera.gd" id="1_efari"]
+
+[node name="Camera2D" type="Camera2D"]
+script = ExtResource("1_efari")

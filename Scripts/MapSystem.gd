@@ -1,27 +1,41 @@
 @tool
-# MapSystem.gd
 extends Node2D
 
 # Referência ao nó filho TileMapLayer
 @onready var tile_map: TileMapLayer = $TileMapLayer
-@onready var highlight_layer: Node2D = $HighlightLayer # Referencia ao novo nó
-@onready var debug_layer: Node2D = $DebugLayer 
+@onready var highlight_layer: Node2D = $HighlightLayer # Layer que faz o highlight do mouse
+@onready var debug_layer: Node2D = $DebugLayer #Layer que renderiza as coordenadas de cada hexagono (para debug)
 
-# Importante: Pegue a referencia da câmera. 
-# Se ela for filha do MapSystem, use $RTSCamera2D (ajuste o nome se precisar)
-@onready var camera: Camera2D = $Camera2D
+# Pega a referencia da camera, via editor.
+@export var camera: Camera2D
 
 # Parâmetros do Mapa (Editáveis no Inspector)
-@export var grid_width: int = 20
-@export var grid_height: int = 15
+@export var grid_width: int = 70
+@export var grid_height: int = 70
 
-# Novo parametro: Ponto de partida customizado (em coordenadas do Grid, ex: 5,5)
+# Ponto de partida da camera customizado (em coordenadas do Grid, ex: 5,5)
 # Se deixar (-1, -1), ele centraliza automaticamente.
 @export var start_coordinates: Vector2i = Vector2i(-1, -1)
 
 # Controle de Interação
 var hovered_hex: Vector2i = Vector2i(-1, -1) # Coordenada inválida inicial
 
+
+# MAPA DE ATLAS. vetores Vector2i(x, y) indicam os tiles que existem no tileset
+# Como fiz cada tile em uma coluna, só o primeiro valor (x) está sendo alterado.
+const TERRAIN_ATLAS = {
+	"GRASS": Vector2i(1, 0),  
+	"WATER":      Vector2i(2, 0),
+	"FOREST":     Vector2i(3, 0),
+	"MOUNTAIN":   Vector2i(4, 0),
+	"SAND":       Vector2i(5, 0),
+}
+
+
+# Parametros para gerar mapas.
+@export_group("Map Generation")
+@export var noise_seed: int = 123
+@export var frequency: float = 0.05 # Tente 0.05 a 0.15 para mapas melhores
 
 func _ready() -> void:
 	generate_grid()
@@ -30,46 +44,62 @@ func _ready() -> void:
 func generate_grid() -> void:
 	tile_map.clear()
 	
-	# Loop simples para preencher o TileMap
-	# O TileMapLayer do Godot já lida com o posicionamento "offset" dos hexágonos
+	# Gerador de Altitude (Mar vs Terra vs Montanha)
+	var alt_noise = FastNoiseLite.new()
+	alt_noise.seed = noise_seed
+	alt_noise.frequency = frequency
+	alt_noise.noise_type = FastNoiseLite.TYPE_PERLIN
+	alt_noise.fractal_octaves = 4 # Adiciona detalhes nas bordas
+	
+	# Gerador de Umidade (Deserto vs Floresta)
+	var moisture_noise = FastNoiseLite.new()
+	moisture_noise.seed = noise_seed * 10 # Seed diferente
+	moisture_noise.frequency = frequency
+	moisture_noise.noise_type = FastNoiseLite.TYPE_PERLIN
+
 	for x in range(grid_width):
 		for y in range(grid_height):
 			var coord = Vector2i(x, y)
-			# (0, 0) é o ID do atlas source, (0, 0) é a coordenada do tile no atlas
-			# Ajuste esses IDs conforme o seu TileSet criado
-			tile_map.set_cell(coord, 0, Vector2i(0, 0))
-	
-	# Inicializa a camada de debug com os dados do mapa atual
+			
+			# Pegamos os valores (-1.0 a 1.0)
+			var elevation = alt_noise.get_noise_2d(x, y)
+			var moisture = moisture_noise.get_noise_2d(x, y)
+			
+			# Decide qual tile usar
+			var final_atlas_coord = get_biome_tile(elevation, moisture)
+			
+			# Pinta o tile (Source ID 0, Atlas Coord calculada)
+			tile_map.set_cell(coord, 2, final_atlas_coord)
+
+	# Setup dos sistemas auxiliares
 	debug_layer.setup(tile_map, grid_width, grid_height)
 	
-	# --- CONFIGURAÇÃO DA CÂMERA ---
-	
-	# 1. Calcular o retângulo total do mapa em Pixels
-	# get_used_rect() retorna as células (ex: 0,0 até 20,15)
+	# Setup da camera (reutilizando a lógica que fizemos antes)
 	var used_rect = tile_map.get_used_rect()
-	
-	# Convertemos o topo-esquerda e baixo-direita para pixels
-	var top_left_px = tile_map.map_to_local(used_rect.position)
-	var bottom_right_px = tile_map.map_to_local(used_rect.end)
-	
-	# Criamos um Rect2 com esses valores
-	var map_pixel_rect = Rect2(top_left_px, bottom_right_px - top_left_px)
-	
-	# 2. Verificar se temos um override de posição inicial
-	var start_pixel = Vector2.INF
-	if start_coordinates != Vector2i(-1, -1):
-		# Converte a coordenada do grid (ex: 5,5) para pixels
-		start_pixel = tile_map.map_to_local(start_coordinates)
-	
-	# 3. Manda a câmera se ajustar
-	# 500.0 é a margem extra de borda
+	var map_px_rect = Rect2(tile_map.map_to_local(used_rect.position), tile_map.map_to_local(used_rect.end) - tile_map.map_to_local(used_rect.position))
 	if camera.has_method("setup_camera"):
-		# Margem de 2000 pixels (ou mais)
-		# Isso permite que a câmera saia bastante do mapa para focar num canto
-		camera.setup_camera(map_pixel_rect, 2000.0, start_pixel)	
-		
-	# Força um redesenho para mostrar as coordenadas
-	queue_redraw()
+		camera.setup_camera(map_px_rect, 2000.0)
+
+# A Regra de Negócio dos Terrenos
+func get_biome_tile(h: float, m: float) -> Vector2i:
+	# h = height (altitude), m = moisture (umidade)
+	
+	# 1. ÁGUA (Altitude muito baixa)
+	if h < 0.05:  return TERRAIN_ATLAS["WATER"]
+	
+	# 2. PRAIA (Transição Terra/Água)
+	if h < 0.12: return TERRAIN_ATLAS["SAND"]
+	
+	# 3. MONTANHA (Altitude muito alta)
+	if h > 0.45:
+		return TERRAIN_ATLAS["MOUNTAIN"]
+	
+	# 4. TERRA PLANA (O meio termo)
+	# Aqui a umidade define o que é
+	if m < -0.3: return TERRAIN_ATLAS["SAND"]   # Deserto
+	if m > 0.2:  return TERRAIN_ATLAS["FOREST"] # Floresta
+	
+	return TERRAIN_ATLAS["GRASS"] # Planície Padrão
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
