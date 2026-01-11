@@ -69,7 +69,7 @@ func generate_grid() -> void:
 			var final_atlas_coord = get_biome_tile(elevation, moisture)
 			
 			# Pinta o tile (Source ID 0, Atlas Coord calculada)
-			tile_map.set_cell(coord, 2, final_atlas_coord)
+			tile_map.set_cell(coord, 1, final_atlas_coord)
 
 	# Setup dos sistemas auxiliares
 	debug_layer.setup(tile_map, grid_width, grid_height)
