@@ -4,11 +4,12 @@ class_name HexMetrics
 # Orientação: Pointy-Topped (Topo Pontudo)
 
 # Tamanho do hexágono (do centro até um canto - "Size" no RedBlob)
-const SIZE := 64.0 
+const SIZE := 64.0
 
-# Para Pointy-Topped:
+# Fórmula para mapa "Pointy-Topped":
 # Width = sqrt(3) * size
 # Height = 2 * size
+
 # Usamos esses valores para desenhar ou calcular limites
 const WIDTH := SIZE * 1.7320508 # Aprox 110.85
 const HEIGHT := SIZE * 2.0      # 128.0

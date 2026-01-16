@@ -4,7 +4,7 @@ extends Node2D
 # Referência ao nó filho TileMapLayer
 @onready var tile_map: TileMapLayer = $TileMapLayer
 @onready var highlight_layer: Node2D = $HighlightLayer # Layer que faz o highlight do mouse
-@onready var debug_layer: Node2D = $DebugLayer #Layer que renderiza as coordenadas de cada hexagono (para debug)
+@onready var debug_layer: Node2D = $DebugLayer #Layer que renderiza as coordenadas de cada hexagono (para debug, esta renderizado por baixo da grid)
 
 # Pega a referencia da camera, via editor.
 @export var camera: Camera2D
@@ -15,6 +15,7 @@ extends Node2D
 
 # Ponto de partida da camera customizado (em coordenadas do Grid, ex: 5,5)
 # Se deixar (-1, -1), ele centraliza automaticamente.
+# TODO: Testar se realmente funciona com coordenada especifica
 @export var start_coordinates: Vector2i = Vector2i(-1, -1)
 
 # Controle de Interação
@@ -44,6 +45,10 @@ func _ready() -> void:
 func generate_grid() -> void:
 	tile_map.clear()
 	
+	# "FastNoiseLite" gera números aleatórios, porém com uma transição
+	# Mais "suave" entre eles.
+	# Frequency define o quanto o valor de um hex varia em relação ao anterior.
+	
 	# Gerador de Altitude (Mar vs Terra vs Montanha)
 	var alt_noise = FastNoiseLite.new()
 	alt_noise.seed = noise_seed
@@ -68,21 +73,29 @@ func generate_grid() -> void:
 			# Decide qual tile usar
 			var final_atlas_coord = get_biome_tile(elevation, moisture)
 			
-			# Pinta o tile (Source ID 0, Atlas Coord calculada)
-			tile_map.set_cell(coord, 1, final_atlas_coord)
+			# Pinta o tile (Source ID 1, Atlas Coord calculada)
+			tile_map.set_cell(coord, 0, final_atlas_coord)
 
 	# Setup dos sistemas auxiliares
 	debug_layer.setup(tile_map, grid_width, grid_height)
 	
-	# Setup da camera (reutilizando a lógica que fizemos antes)
+	# Setup da camera
 	var used_rect = tile_map.get_used_rect()
 	var map_px_rect = Rect2(tile_map.map_to_local(used_rect.position), tile_map.map_to_local(used_rect.end) - tile_map.map_to_local(used_rect.position))
-	if camera.has_method("setup_camera"):
+	if camera and camera.has_method("setup_camera"):
 		camera.setup_camera(map_px_rect, 2000.0)
 
 # A Regra de Negócio dos Terrenos
 func get_biome_tile(h: float, m: float) -> Vector2i:
+	# Novos tipos de terrenos, só precisam ser adicionados como "if" aqui.
+	# E também no "TERRAIN_ATLAS", para pegar a imagem no tileset
+	
+	
 	# h = height (altitude), m = moisture (umidade)
+	
+	# h = usado pra saber a elevação do terreno (baixo = mar/areia; alto = montanha)
+	# m = usado para terrenos que estão entre "mar/areia" e "montanha"
+	
 	
 	# 1. ÁGUA (Altitude muito baixa)
 	if h < 0.05:  return TERRAIN_ATLAS["WATER"]
@@ -114,7 +127,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				# MANDA O FILHO DESENHAR
 				highlight_layer.update_cursor(hovered_hex, tile_map)
 			else:
-				# Esconde se sair do mapa
+				# Esconde o highlight se sair do mapa
 				highlight_layer.update_cursor(Vector2i(-1, -1), tile_map)
 		
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
